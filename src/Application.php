@@ -62,35 +62,38 @@ class Application extends BaseApplication
      */
     public function middleware(MiddlewareQueue $middlewareQueue): MiddlewareQueue
     {
+        // Create CSRF middleware instance
+        $csrf = new CsrfProtectionMiddleware([
+            'httponly' => true,
+        ]);
+
+        // Disable CSRF for API routes
+        $csrf = $csrf->skipCheckCallback(function ($request) {
+            // Skip CSRF protection for any /api/* route
+            return str_starts_with($request->getPath(), '/api/');
+        });
+
         $middlewareQueue
-            // Catch any exceptions in the lower layers,
-            // and make an error page/response
+            // Catch exceptions
             ->add(new ErrorHandlerMiddleware(Configure::read('Error'), $this))
 
-            // Handle plugin/theme assets like CakePHP normally does.
+            // Serve static assets
             ->add(new AssetMiddleware([
                 'cacheTime' => Configure::read('Asset.cacheTime'),
             ]))
 
-            // Add routing middleware.
-            // If you have a large number of routes connected, turning on routes
-            // caching in production could improve performance.
-            // See https://github.com/CakeDC/cakephp-cached-routing
+            // Routing
             ->add(new RoutingMiddleware($this))
 
-            // Parse various types of encoded request bodies so that they are
-            // available as array through $request->getData()
-            // https://book.cakephp.org/5/en/controllers/middleware.html#body-parser-middleware
+            // Parse JSON/XML/FORM bodies
             ->add(new BodyParserMiddleware())
 
-            // Cross Site Request Forgery (CSRF) Protection Middleware
-            // https://book.cakephp.org/5/en/security/csrf.html#cross-site-request-forgery-csrf-middleware
-            ->add(new CsrfProtectionMiddleware([
-                'httponly' => true,
-            ]));
+            // CSRF protection (with API excluded)
+            ->add($csrf);
 
         return $middlewareQueue;
     }
+
 
     /**
      * Register application container services.

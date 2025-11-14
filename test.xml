@@ -1,0 +1,19 @@
+<CusGetCustomersRequest xmlns="http://www.pronto.net/cus/1.0.0">
+    <RecordLimit>5</RecordLimit>
+    <Parameters></Parameters>
+    <Filters>
+        <CustomerName>
+            <Like>A%</Like>
+        </CustomerName>
+    </Filters>
+    <RequestFields>
+        <Customers>
+            <Customer>
+                <BillTo/>
+                <CustomerCode/>
+                <CustomerName/>
+                <WarehouseCode/>
+            </Customer>
+        </Customers>
+    </RequestFields>
+</CusGetCustomersRequest>

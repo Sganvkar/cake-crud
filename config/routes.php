@@ -56,28 +56,16 @@ return function (RouteBuilder $routes): void {
         ]);
     });
 
-    // ----------------------------------------------------------------------
-    // API Routes (no UI, only backend requests)
-    // /api/... URLs map to controllers inside src/Controller/Api/
-    // ----------------------------------------------------------------------
-    $routes->scope('/api', function (RouteBuilder $builder): void {
+    $routes->prefix('Api', function (RouteBuilder $builder): void {
 
-        // POST /api/customers/get → Api/CustomersController::get()
-        // This is the endpoint that accepts XML and returns XML.
         $builder->connect('/customers/get', [
-            'controller' => 'Api/Customers',   // folder Api/, class CustomersController
-            'action'     => 'get'              // get method inside that controller
-        ])
-        ->setMethods(['POST']);                // Only allow POST requests for this route
+            'controller' => 'Customers',
+            'action' => 'get'
+        ])->setMethods(['POST']);
+
+        $builder->fallbacks();
     });
 
-    // ----------------------------------------------------------------------
-    // Legacy route you already had:
-    // /api/customer → CustomersController::getCustomer()
-    // You can remove this if not needed.
-    // ----------------------------------------------------------------------
-    $routes->connect('/api/customer', [
-        'controller' => 'Customers',
-        'action'     => 'getCustomer'
-    ]);
+
+    $routes->connect('/dbtest', ['controller' => 'Dbtest', 'action' => 'index']);
 };

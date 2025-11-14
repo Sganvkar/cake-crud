@@ -10,37 +10,31 @@ use App\Controller\AppController;            // Base controller for shared logic
 use Cake\Http\Response;                     // Response class for return typing
 use Cake\Datasource\ConnectionManager;      // (Not used now, but available)
 use Cake\Utility\Text;                      // (Not used now)
+use Cake\Log\Log;
 
 class CustomersController extends AppController
 {
     public function initialize(): void
     {
         parent::initialize();
-        // Runs parent's initialization (components, helpers, etc.)
 
-        // Allow XML rendering capability if needed through RequestHandler.
-        // Maps 'xml' to Cake's XmlView (not used for this manual XML output).
-        $this->RequestHandler->setConfig('viewClassMap', [
-            'xml' => 'Cake\View\XmlView'
-        ]);
+        $this->Customers = $this->fetchTable('Customers');
 
-        // Load the CustomersTable model (src/Model/Table/CustomersTable.php)
-        $this->loadModel('Customers');
+        // Only allow POST requests
+        $this->request->allowMethod(['post']);
 
-        // Only allow POST requests for this controller action (security).
-        $this->getRequest()->allowMethod(['post']);
-
-        // Disable auto-rendering of templates.
-        // We will return raw XML manually using ->withStringBody()
+        // We are generating XML manually
         $this->autoRender = false;
     }
+
 
     public function get(): Response
     // This method handles: POST /api/customers/get
     // It receives XML, parses filters, queries the DB, returns XML.
-    {
-        // Fetch raw XML body from the incoming request.
-        $raw = (string)$this->getRequest()->getInput();
+    {   
+        // Read raw XML body (CakePHP 5)
+        $raw = $this->getRequest()->getBody()->getContents();
+        Log::write('debug', $raw ?: 'EMPTY BODY RECEIVED');
 
         // If the request body is empty, return an error XML response.
         if (empty($raw)) {

@@ -1,0 +1,17 @@
+<CustomerResponse>
+    <Status>Success</Status>
+    <Customer>
+        <CustomerCode>CUST001</CustomerCode>
+        <CustomerName>ABC Industrial Supplies</CustomerName>
+        <Phone>+61 3 9876 5432</Phone>
+        <Email>contact@abcindustrial.com.au</Email>
+        <Address>
+            <Line1>123 Main Street</Line1>
+            <Line2>Richmond</Line2>
+            <City>Melbourne</City>
+            <State>VIC</State>
+            <Postcode>3000</Postcode>
+            <Country>Australia</Country>
+        </Address>
+    </Customer>
+</CustomerResponse>

@@ -29,68 +29,34 @@ class CustomersController extends AppController
 
 
     public function get(): Response
-    // This method handles: POST /api/customers/get
-    // It receives XML, parses filters, queries the DB, returns XML.
-    {   
-        // Read raw XML body (CakePHP 5)
+    {
+        // Read raw XML
         $raw = $this->getRequest()->getBody()->getContents();
         Log::write('debug', $raw ?: 'EMPTY BODY RECEIVED');
 
-        // If the request body is empty, return an error XML response.
         if (empty($raw)) {
-            return $this->getResponse()
-                ->withType('application/xml')
-                ->withStringBody(
-                    '<CusGetCustomersResponse>
-                        <APIResponseStatus>
-                            <Code>ERROR</Code>
-                            <Message>No request body</Message>
-                        </APIResponseStatus>
-                    </CusGetCustomersResponse>'
-                );
+            return $this->xmlError("No request body");
         }
 
-        // Enable internal XML error handling instead of warnings.
         libxml_use_internal_errors(true);
-
-        // Parse XML into SimpleXMLElement
         $xml = simplexml_load_string($raw);
 
-        // If parsing fails, return invalid XML error.
         if ($xml === false) {
-            $msg = 'Invalid XML';
-            return $this->getResponse()
-                ->withType('application/xml')
-                ->withStringBody(
-                    "<CusGetCustomersResponse>
-                        <APIResponseStatus>
-                            <Code>ERROR</Code>
-                            <Message>{$msg}</Message>
-                        </APIResponseStatus>
-                    </CusGetCustomersResponse>"
-                );
+            return $this->xmlError("Invalid XML");
         }
 
         // --------------------------------------------------------------
-        // Extract requested fields from <RequestFields>
+        // Extract requested fields
         // --------------------------------------------------------------
         $requestedFields = [];
 
-        // Check if <RequestFields><Customers><Customer> exists
         if (isset($xml->RequestFields->Customers->Customer)) {
-
-            // Loop over each child node (<BillTo/>, <CustomerName/>, etc.)
             foreach ($xml->RequestFields->Customers->Customer->children() as $child) {
-
-                // Get XML tag name (e.g., "BillTo")
-                $name = $child->getName();
-
-                // Add to list
-                $requestedFields[] = $name;
+                $requestedFields[] = $child->getName();
             }
         }
 
-        // If no fields were selected, default to ALL fields.
+        // Default fields if none selected
         if (empty($requestedFields)) {
             $requestedFields = [
                 'BillTo',
@@ -101,30 +67,28 @@ class CustomersController extends AppController
             ];
         }
 
-        // For simplicity, DB column names match XML field names.
-        // If DB uses snake_case, create a mapping table.
-        $dbFields = $requestedFields;
+        // --------------------------------------------------------------
+        // ALWAYS include "id" internally
+        // (but do NOT require it in RequestFields)
+        // --------------------------------------------------------------
+        $dbFields = array_unique(
+            array_merge(['id'], $requestedFields)
+        );
 
         // --------------------------------------------------------------
-        // Build SQL conditions from <Filters>
+        // Build filters
         // --------------------------------------------------------------
         $conditions = [];
 
         if (isset($xml->Filters)) {
-
-            // Iterate through each filter node (<BillTo>, <CustomerCode>, etc.)
             foreach ($xml->Filters->children() as $field) {
-
-                $fieldName = $field->getName();  // e.g. BillTo
+                $fieldName = $field->getName();
                 $like     = (string)$field->Like;
                 $notlike  = (string)$field->NotLike;
 
-                // Add LIKE condition if present
                 if ($like !== '') {
                     $conditions[] = [$fieldName . ' LIKE' => $like];
                 }
-
-                // Add NOT LIKE condition if present
                 if ($notlike !== '') {
                     $conditions[] = [$fieldName . ' NOT LIKE' => $notlike];
                 }
@@ -132,38 +96,31 @@ class CustomersController extends AppController
         }
 
         // --------------------------------------------------------------
-        // Extract RecordLimit if provided
+        // Record limit
         // --------------------------------------------------------------
         $limit = null;
-
         if (isset($xml->RecordLimit)) {
             $limit = (int)$xml->RecordLimit;
-
-            // Ignore invalid limits (zero or negative)
             if ($limit <= 0) {
                 $limit = null;
             }
         }
 
         // --------------------------------------------------------------
-        // Run database query
+        // Fetch from DB
         // --------------------------------------------------------------
         $customersTable = $this->getTableLocator()->get('Customers');
 
-        // Start query selecting only requested DB fields
         $query = $customersTable->find()->select($dbFields);
 
-        // Apply each condition
         foreach ($conditions as $c) {
-            $query = $query->where($c);
+            $query->where($c);
         }
 
-        // Apply limit if specified
         if ($limit) {
-            $query = $query->limit($limit);
+            $query->limit($limit);
         }
 
-        // Execute query + fetch results as array
         $results = $query->all()->toArray();
 
         // --------------------------------------------------------------
@@ -171,42 +128,28 @@ class CustomersController extends AppController
         // --------------------------------------------------------------
         $resp = new \SimpleXMLElement('<CusGetCustomersResponse/>');
 
-        // Add API response status
         $status = $resp->addChild('APIResponseStatus');
         $status->addChild('Code', 'OK');
 
-        // Add Customers container
         $customersNode = $resp->addChild('Customers');
 
-        // Loop through DB rows
         foreach ($results as $row) {
 
+            // Each <Customer>
             $customerNode = $customersNode->addChild('Customer');
 
-            // Loop through selected fields and add them to XML
-            foreach ($dbFields as $f) {
+            // Always include ID in the response
+            $customerNode->addChild('id', (string)$row->id);
 
-                $value = null;
+            // Add only requested fields
+            foreach ($requestedFields as $f) {
 
-                // Try exact property name (CamelCase)
-                if (isset($row->{$f})) {
-                    $value = $row->{$f};
+                $value = $row->{$f} ?? null;
 
-                } else {
-                    // Try lowercase as fallback
-                    $lc = strtolower($f);
-
-                    if (isset($row->{$lc})) {
-                        $value = $row->{$lc};
-                    }
-                }
-
-                // Format dates properly
                 if ($value instanceof \DateTimeInterface) {
                     $value = $value->format('Y-m-d');
                 }
 
-                // Write XML node with value
                 $customerNode->addChild(
                     $f,
                     htmlspecialchars((string)$value)
@@ -214,12 +157,27 @@ class CustomersController extends AppController
             }
         }
 
-        // Convert SimpleXMLElement to XML string
-        $body = $resp->asXML();
-
-        // Return XML as HTTP response
         return $this->getResponse()
-            ->withType('application/xml')          // Set Content-Type header
-            ->withStringBody($body);               // Set response XML body
+            ->withType('application/xml')
+            ->withStringBody($resp->asXML());
     }
+
+    /**
+     * Helper for quick XML error responses
+     */
+    private function xmlError(string $msg): Response
+    {
+        $xml = "<CusGetCustomersResponse>
+                    <APIResponseStatus>
+                        <Code>ERROR</Code>
+                        <Message>{$msg}</Message>
+                    </APIResponseStatus>
+                </CusGetCustomersResponse>";
+
+        return $this->getResponse()
+            ->withType('application/xml')
+            ->withStringBody($xml);
+    }
+
+
 }

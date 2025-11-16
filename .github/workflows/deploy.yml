@@ -1,48 +1,24 @@
-name: Deploy CakePHP App
+name: CI/CD FTP Deploy
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
 
 jobs:
-  deploy:
+  ftp-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.1'
-          extensions: mbstring, intl, pdo_mysql
-
-      - name: Install Composer Dependencies
-        run: composer install --no-dev --optimize-autoloader
-
-      # Optional – build assets for CakePHP projects using npm
-      # - name: Install Node
-      #   uses: actions/setup-node@v3
-      #   with:
-      #     node-version: '18'
-      # - name: Build Frontend
-      #   run: |
-      #     npm install
-      #     npm run build
-
-      - name: Deploy via FTP
+      - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.0
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: "./"
           server-dir: ${{ secrets.FTP_FOLDER }}
-          exclude: |
-            **/.git*
-            **/.github*
-            **/tests*
-            **/node_modules*
-            composer.json
-            composer.lock
+          local-dir: ./
+          method: ftp

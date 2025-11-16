@@ -61,5 +61,5 @@ return function (RouteBuilder $routes): void {
     });
 
 
-    $routes->connect('/dbtest', ['controller' => 'Dbtest', 'action' => 'index']);
+    $routes->connect('/dbtest', ['controller' => 'Dbtest', 'action' => 'index']); 
 };

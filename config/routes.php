@@ -23,24 +23,18 @@ return function (RouteBuilder $routes): void {
     // ----------------------------------------------------------------------
     $routes->scope('/', function (RouteBuilder $builder): void {
 
-        // Connect the home page "/" to PagesController::display('home')
-        // So visiting "/" loads templates/Pages/home.php
+        // Make "/" load CustomersController::search()
         $builder->connect('/', [
-            'controller' => 'Pages',
-            'action'    => 'display',
-            'home'      // extra parameter passed to the action
+            'controller' => 'Customers',
+            'action'     => 'search'
         ]);
 
-        // Connect "/pages/*" URLs to PagesController::display()
-        // Allows URLs like /pages/about or /pages/contact
+        // Keep pages route
         $builder->connect('/pages/*', 'Pages::display');
 
-        // Create fallback routes:
-        // - /controller → index()
-        // - /controller/action/* → action with parameters
-        // Good for early development but not recommended long-term.
         $builder->fallbacks();
     });
+
 
     // ----------------------------------------------------------------------
     // UI route for the search screen
